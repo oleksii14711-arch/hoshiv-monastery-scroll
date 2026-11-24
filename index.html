@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Ясна Гора • Гошівський монастир</title>
+    <style>
+      :root {
+        --bg-obsidian: #07080b;
+        --text-ivory: #f7f3ea;
+        --text-parchment: #e5dac2;
+        --accent-gold: #d6b267;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg-obsidian);
+        color: var(--text-ivory);
+        overflow-x: hidden;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+
+      .scroll-track {
+        height: 850vh;
+        width: 100%;
+        pointer-events: none;
+      }
+
+      .stage {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background:
+          radial-gradient(
+            ellipse at 50% 45%,
+            rgba(204, 166, 94, 0.09) 0%,
+            rgba(7, 8, 11, 0) 64%
+          ),
+          var(--bg-obsidian);
+      }
+
+      .frame-shell {
+        position: relative;
+        height: 100vh;
+        height: 100dvh;
+        width: calc(100vh * 9 / 16);
+        width: calc(100dvh * 9 / 16);
+        max-width: 100vw;
+        overflow: hidden;
+        background: var(--bg-obsidian);
+        box-shadow:
+          0 0 90px rgba(0, 0, 0, 0.9),
+          0 0 0 1px rgba(214, 178, 103, 0.14);
+      }
+
+      @media (max-aspect-ratio: 9/16) {
+        .frame-shell {
+          width: 100vw;
+          height: 100vh;
+          height: 100dvh;
+          box-shadow: none;
+        }
+      }
+
+      #scroll-canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        transition: opacity 320ms ease-out;
+      }
+
+      #scroll-canvas.is-ready {
+        opacity: 1;
+      }
+
+      .stage-scrim {
+        pointer-events: none;
+        position: absolute;
+        inset: auto 0 0 0;
+        height: 42%;
+        background: linear-gradient(
+          to top,
+          rgba(7, 8, 11, 0.86) 0%,
+          rgba(7, 8, 11, 0.45) 48%,
+          rgba(7, 8, 11, 0) 100%
+        );
+      }
+
+      .overlay-layer {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 24px 24px calc(32px + env(safe-area-inset-bottom, 0px));
+        text-align: center;
+      }
+
+      .story-card {
+        position: absolute;
+        left: 24px;
+        right: 24px;
+        bottom: calc(36px + env(safe-area-inset-bottom, 0px));
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        opacity: 0;
+        will-change: opacity, transform;
+        pointer-events: none;
+      }
+
+      .story-card--stage1 {
+        bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .story-title {
+        margin: 0;
+        font-family: "Georgia", "Palatino Linotype", "Book Antiqua", serif;
+        font-weight: 500;
+        font-size: clamp(1.22rem, 2.5vh, 1.65rem);
+        line-height: 1.24;
+        letter-spacing: 0.015em;
+        color: var(--text-ivory);
+        text-shadow: 0 2px 18px rgba(0, 0, 0, 0.85);
+      }
+
+      .story-rule {
+        width: 36px;
+        height: 1px;
+        background: var(--accent-gold);
+        opacity: 0.9;
+        box-shadow: 0 0 8px rgba(214, 178, 103, 0.35);
+      }
+
+      .story-subtitle {
+        margin: 0;
+        max-width: 34ch;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        font-size: clamp(0.84rem, 1.55vh, 0.98rem);
+        line-height: 1.45;
+        letter-spacing: 0.02em;
+        color: var(--text-parchment);
+        text-shadow: 0 1px 14px rgba(0, 0, 0, 0.9);
+      }
+
+      .scroll-hint {
+        position: absolute;
+        left: 50%;
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        transform: translate3d(-50%, 0, 0);
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(229, 218, 194, 0.78);
+        text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9);
+        will-change: opacity, transform;
+        pointer-events: none;
+      }
+
+      .scroll-hint-chevron {
+        width: 10px;
+        height: 10px;
+        border-right: 1.5px solid var(--accent-gold);
+        border-bottom: 1.5px solid var(--accent-gold);
+        transform: rotate(45deg);
+        opacity: 0.85;
+      }
+
+      .finale-wrap {
+        position: absolute;
+        left: 24px;
+        right: 24px;
+        bottom: calc(46px + env(safe-area-inset-bottom, 0px));
+        display: flex;
+        justify-content: center;
+        opacity: 0;
+        will-change: opacity, transform;
+        pointer-events: none;
+      }
+
+      .finale-btn {
+        appearance: none;
+        -webkit-appearance: none;
+        border: 1px solid rgba(214, 178, 103, 0.65);
+        background: rgba(7, 8, 11, 0.78);
+        color: var(--text-ivory);
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        font-size: clamp(0.88rem, 1.65vh, 1rem);
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        padding: 13px 26px;
+        border-radius: 999px;
+        cursor: pointer;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        box-shadow:
+          0 10px 28px rgba(0, 0, 0, 0.55),
+          inset 0 0 16px rgba(214, 178, 103, 0.08);
+        transition:
+          border-color 180ms ease,
+          background-color 180ms ease,
+          box-shadow 180ms ease,
+          transform 180ms ease;
+      }
+
+      .finale-btn:hover {
+        border-color: var(--accent-gold);
+        background: rgba(16, 18, 24, 0.9);
+        box-shadow:
+          0 12px 32px rgba(0, 0, 0, 0.65),
+          0 0 22px rgba(214, 178, 103, 0.28);
+        transform: translateY(-1px);
+      }
+
+      .finale-btn:active {
+        transform: translateY(0);
+      }
+
+      .finale-btn:focus-visible {
+        outline: 2px solid var(--accent-gold);
+        outline-offset: 3px;
+      }
+
+      .progress-track {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 2px;
+        background: rgba(214, 178, 103, 0.16);
+        pointer-events: none;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 100%;
+        background: var(--accent-gold);
+        transform-origin: left center;
+        transform: scaleX(0);
+        will-change: transform;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #scroll-canvas,
+        .finale-btn {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage">
+      <div class="frame-shell">
+        <canvas id="scroll-canvas" aria-hidden="true"></canvas>
+        <div class="stage-scrim" aria-hidden="true"></div>
+
+        <div class="overlay-layer">
+          <section class="story-card story-card--stage1" id="overlay-stage-1" aria-hidden="false">
+            <h1 class="story-title">Ясна Гора • Гошівський монастир</h1>
+            <span class="story-rule" aria-hidden="true"></span>
+            <p class="story-subtitle">Паломницька святиня над Карпатами</p>
+          </section>
+
+          <section class="story-card" id="overlay-stage-2" aria-hidden="true">
+            <h2 class="story-title">Дорога до храму</h2>
+            <span class="story-rule" aria-hidden="true"></span>
+            <p class="story-subtitle">Церква Преображення Господнього</p>
+          </section>
+
+          <section class="story-card" id="overlay-stage-3" aria-hidden="true">
+            <h2 class="story-title">Усередині святині</h2>
+            <span class="story-rule" aria-hidden="true"></span>
+            <p class="story-subtitle">До чудотворної Гошівської ікони Богородиці</p>
+          </section>
+
+          <div class="scroll-hint" id="scroll-hint" aria-hidden="true">
+            <span>Гортайте вниз</span>
+            <span class="scroll-hint-chevron"></span>
+          </div>
+
+          <div class="finale-wrap" id="overlay-finale" aria-hidden="true">
+            <button class="finale-btn" id="back-to-top" type="button" tabindex="-1">
+              Повернутися на початок
+            </button>
+          </div>
+        </div>
+
+        <div class="progress-track" aria-hidden="true">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+      </div>
+    </main>
+
+    <div class="scroll-track" aria-hidden="true"></div>
+
+    <script>
+      (() => {
+        const FRAME_COUNT = 648;
+        const PRIORITY_STRIDE = 8;
+        const MAX_CONCURRENT = 6;
+        const SMOOTHING_RATE = 9;
+        const MAX_DPR = 2;
+        const BG_COLOR = "#07080b";
+
+        const canvas = document.getElementById("scroll-canvas");
+        const ctx = canvas.getContext("2d", { alpha: false });
+        if (!ctx) return;
+
+        const stage1El = document.getElementById("overlay-stage-1");
+        const stage2El = document.getElementById("overlay-stage-2");
+        const stage3El = document.getElementById("overlay-stage-3");
+        const finaleEl = document.getElementById("overlay-finale");
+        const backToTopBtn = document.getElementById("back-to-top");
+        const scrollHintEl = document.getElementById("scroll-hint");
+        const progressBarEl = document.getElementById("progress-bar");
+
+        const frames = new Array(FRAME_COUNT).fill(null);
+        const requested = new Uint8Array(FRAME_COUNT);
+        const failed = new Uint8Array(FRAME_COUNT);
+
+        let loadedCount = 0;
+        let requestedCount = 0;
+        let failedCount = 0;
+
+        let viewportWidth = 0;
+        let viewportHeight = 0;
+        let currentFrame = 0;
+        let targetFrame = 0;
+        let lastTime = 0;
+        let rafId = 0;
+        let needsRender = true;
+        let destroyed = false;
+        let canvasReady = false;
+        let activeStage = "stage-1";
+
+        const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+        let reducedMotion = reducedMotionQuery.matches;
+
+        function clamp01(value) {
+          return Math.min(1, Math.max(0, value));
+        }
+
+        function smoothstep(edge0, edge1, x) {
+          if (edge1 <= edge0) return x >= edge1 ? 1 : 0;
+          const t = clamp01((x - edge0) / (edge1 - edge0));
+          return t * t * (3 - 2 * t);
+        }
+
+        function frameUrl(index) {
+          const num = String(index + 1).padStart(4, "0");
+          return `./frames/frame_${num}.webp`;
+        }
+
+        function getScrollProgress() {
+          const range = document.documentElement.scrollHeight - window.innerHeight;
+          return range > 0 ? clamp01(window.scrollY / range) : 0;
+        }
+
+        function computeTargetFrame() {
+          if (reducedMotion) {
+            targetFrame = 0;
+            return;
+          }
+          targetFrame = getScrollProgress() * (FRAME_COUNT - 1);
+        }
+
+        function applyCardState(el, opacity, driftY) {
+          const visible = opacity > 0.01;
+          el.style.opacity = opacity.toFixed(3);
+          el.style.transform = reducedMotion
+            ? "translate3d(0, 0, 0)"
+            : `translate3d(0, ${driftY.toFixed(2)}px, 0)`;
+          el.setAttribute("aria-hidden", visible ? "false" : "true");
+        }
+
+        function updateOverlays(p) {
+          const s1Opacity = p <= 0.26 ? 1 : p < 0.33 ? 1 - smoothstep(0.26, 0.33, p) : 0;
+          const s1Drift = p > 0.26 ? -12 * smoothstep(0.26, 0.33, p) : 0;
+          applyCardState(stage1El, s1Opacity, s1Drift);
+
+          let s2Opacity = 0;
+          let s2Drift = 14;
+          if (p >= 0.35 && p <= 0.66) {
+            if (p < 0.41) {
+              const t = smoothstep(0.35, 0.41, p);
+              s2Opacity = t;
+              s2Drift = 14 * (1 - t);
+            } else if (p <= 0.60) {
+              s2Opacity = 1;
+              s2Drift = 0;
+            } else {
+              const t = smoothstep(0.60, 0.66, p);
+              s2Opacity = 1 - t;
+              s2Drift = -12 * t;
+            }
+          }
+          applyCardState(stage2El, s2Opacity, s2Drift);
+
+          let s3Opacity = 0;
+          let s3Drift = 14;
+          if (p >= 0.68 && p <= 0.95) {
+            if (p < 0.74) {
+              const t = smoothstep(0.68, 0.74, p);
+              s3Opacity = t;
+              s3Drift = 14 * (1 - t);
+            } else if (p <= 0.90) {
+              s3Opacity = 1;
+              s3Drift = 0;
+            } else {
+              const t = smoothstep(0.90, 0.95, p);
+              s3Opacity = 1 - t;
+              s3Drift = -12 * t;
+            }
+          }
+          applyCardState(stage3El, s3Opacity, s3Drift);
+
+          const hintOpacity = p <= 0.015 ? 1 : p < 0.06 ? 1 - smoothstep(0.015, 0.06, p) : 0;
+          scrollHintEl.style.opacity = hintOpacity.toFixed(3);
+          scrollHintEl.style.transform = reducedMotion
+            ? "translate3d(-50%, 0, 0)"
+            : `translate3d(-50%, ${(8 * (1 - hintOpacity)).toFixed(2)}px, 0)`;
+
+          let finaleOpacity = 0;
+          let finaleDrift = 12;
+          if (p >= 0.96) {
+            const t = p < 0.985 ? smoothstep(0.96, 0.985, p) : 1;
+            finaleOpacity = t;
+            finaleDrift = 12 * (1 - t);
+          }
+          const finaleInteractive = finaleOpacity >= 0.2;
+          finaleEl.style.opacity = finaleOpacity.toFixed(3);
+          finaleEl.style.transform = reducedMotion
+            ? "translate3d(0, 0, 0)"
+            : `translate3d(0, ${finaleDrift.toFixed(2)}px, 0)`;
+          finaleEl.style.pointerEvents = finaleInteractive ? "auto" : "none";
+          finaleEl.setAttribute("aria-hidden", finaleInteractive ? "false" : "true");
+          backToTopBtn.tabIndex = finaleInteractive ? 0 : -1;
+
+          progressBarEl.style.transform = `scaleX(${clamp01(p).toFixed(4)})`;
+
+          if (s1Opacity >= 0.5) {
+            activeStage = "stage-1";
+          } else if (s2Opacity >= 0.5) {
+            activeStage = "stage-2";
+          } else if (s3Opacity >= 0.5) {
+            activeStage = "stage-3";
+          } else if (finaleInteractive) {
+            activeStage = "finale";
+          } else {
+            activeStage = null;
+          }
+        }
+
+        function resizeCanvas() {
+          const rect = canvas.getBoundingClientRect();
+          const cssW = Math.max(1, Math.round(rect.width || window.innerWidth));
+          const cssH = Math.max(1, Math.round(rect.height || window.innerHeight));
+          const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+
+          viewportWidth = cssW;
+          viewportHeight = cssH;
+
+          const backingW = Math.round(cssW * dpr);
+          const backingH = Math.round(cssH * dpr);
+          if (canvas.width !== backingW || canvas.height !== backingH) {
+            canvas.width = backingW;
+            canvas.height = backingH;
+          }
+
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          needsRender = true;
+        }
+
+        function findNearestLoaded(index) {
+          if (frames[index]) return frames[index];
+          for (let offset = 1; offset < FRAME_COUNT; offset++) {
+            const back = index - offset;
+            if (back >= 0 && frames[back]) return frames[back];
+            const forward = index + offset;
+            if (forward < FRAME_COUNT && frames[forward]) return frames[forward];
+          }
+          return null;
+        }
+
+        function drawCover(img) {
+          const iw = img.naturalWidth;
+          const ih = img.naturalHeight;
+          if (!iw || !ih || !viewportWidth || !viewportHeight) return;
+
+          const scale = Math.max(viewportWidth / iw, viewportHeight / ih);
+          const drawW = iw * scale;
+          const drawH = ih * scale;
+          const drawX = (viewportWidth - drawW) * 0.5;
+          const drawY = (viewportHeight - drawH) * 0.5;
+
+          ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        }
+
+        function render() {
+          if (destroyed) return;
+
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = BG_COLOR;
+          ctx.fillRect(0, 0, viewportWidth, viewportHeight);
+
+          const clamped = Math.min(FRAME_COUNT - 1, Math.max(0, currentFrame));
+          const lowerIdx = Math.floor(clamped);
+          const upperIdx = Math.min(FRAME_COUNT - 1, lowerIdx + 1);
+          const blend = clamped - lowerIdx;
+
+          const lowerImg = findNearestLoaded(lowerIdx);
+          if (lowerImg) {
+            ctx.globalAlpha = 1;
+            drawCover(lowerImg);
+          }
+
+          if (!reducedMotion && upperIdx !== lowerIdx && blend > 0.001) {
+            const upperImg = frames[upperIdx];
+            if (upperImg && upperImg !== lowerImg) {
+              ctx.globalAlpha = blend;
+              drawCover(upperImg);
+            }
+          }
+
+          ctx.globalAlpha = 1;
+
+          const displayProgress = reducedMotion
+            ? getScrollProgress()
+            : FRAME_COUNT > 1
+              ? clamped / (FRAME_COUNT - 1)
+              : 0;
+          updateOverlays(displayProgress);
+        }
+
+        function tick(now) {
+          if (destroyed || reducedMotion) {
+            rafId = 0;
+            return;
+          }
+
+          if (!lastTime) {
+            lastTime = now;
+          }
+          const dt = Math.min((now - lastTime) / 1000, 0.1);
+          lastTime = now;
+
+          const diff = targetFrame - currentFrame;
+          if (Math.abs(diff) > 0.0005) {
+            const alpha = 1 - Math.exp(-dt * SMOOTHING_RATE);
+            currentFrame += diff * alpha;
+            if (Math.abs(targetFrame - currentFrame) <= 0.0005) {
+              currentFrame = targetFrame;
+            }
+            needsRender = true;
+          } else if (currentFrame !== targetFrame) {
+            currentFrame = targetFrame;
+            needsRender = true;
+          }
+
+          if (needsRender) {
+            needsRender = false;
+            render();
+          }
+
+          if (Math.abs(targetFrame - currentFrame) > 0.0005 || needsRender) {
+            rafId = window.requestAnimationFrame(tick);
+          } else {
+            rafId = 0;
+          }
+        }
+
+        function startLoop() {
+          if (destroyed || reducedMotion || rafId) return;
+          lastTime = 0;
+          rafId = window.requestAnimationFrame(tick);
+        }
+
+        function stopLoop() {
+          if (rafId) {
+            window.cancelAnimationFrame(rafId);
+            rafId = 0;
+          }
+        }
+
+        function revealCanvas() {
+          if (!canvasReady) {
+            canvasReady = true;
+            canvas.classList.add("is-ready");
+          }
+        }
+
+        function loadFrame(index) {
+          if (destroyed || index < 0 || index >= FRAME_COUNT || requested[index]) {
+            return Promise.resolve(false);
+          }
+
+          requested[index] = 1;
+          requestedCount++;
+
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.decoding = "async";
+
+            img.onload = () => {
+              if (destroyed) {
+                resolve(false);
+                return;
+              }
+              frames[index] = img;
+              loadedCount++;
+              needsRender = true;
+
+              if (index === 0) {
+                render();
+                revealCanvas();
+              } else if (reducedMotion) {
+                if (!canvasReady) {
+                  render();
+                  revealCanvas();
+                }
+              } else {
+                startLoop();
+              }
+              resolve(true);
+            };
+
+            img.onerror = () => {
+              if (!destroyed) {
+                failed[index] = 1;
+                failedCount++;
+              }
+              if (index === 0) {
+                revealCanvas();
+              }
+              resolve(false);
+            };
+
+            img.src = frameUrl(index);
+          });
+        }
+
+        function buildLoadQueue() {
+          const queue = [];
+          const seen = new Uint8Array(FRAME_COUNT);
+          seen[0] = 1;
+
+          for (let i = PRIORITY_STRIDE; i < FRAME_COUNT; i += PRIORITY_STRIDE) {
+            if (!seen[i]) {
+              seen[i] = 1;
+              queue.push(i);
+            }
+          }
+
+          if (!seen[FRAME_COUNT - 1]) {
+            seen[FRAME_COUNT - 1] = 1;
+            queue.push(FRAME_COUNT - 1);
+          }
+
+          for (let i = 1; i < FRAME_COUNT; i++) {
+            if (!seen[i]) {
+              seen[i] = 1;
+              queue.push(i);
+            }
+          }
+
+          return queue;
+        }
+
+        async function preloadSequence() {
+          await loadFrame(0);
+          if (destroyed) return;
+
+          const queue = buildLoadQueue();
+          let cursor = 0;
+
+          async function worker() {
+            while (!destroyed) {
+              const priorityIdx = Math.min(
+                FRAME_COUNT - 1,
+                Math.max(0, Math.round(targetFrame))
+              );
+              if (!requested[priorityIdx]) {
+                await loadFrame(priorityIdx);
+                continue;
+              }
+
+              while (cursor < queue.length && requested[queue[cursor]]) {
+                cursor++;
+              }
+              if (cursor >= queue.length) break;
+
+              const idx = queue[cursor++];
+              await loadFrame(idx);
+            }
+          }
+
+          const workerCount = Math.min(MAX_CONCURRENT, queue.length);
+          const workers = [];
+          for (let i = 0; i < workerCount; i++) {
+            workers.push(worker());
+          }
+          await Promise.all(workers);
+        }
+
+        function onScroll() {
+          if (reducedMotion) {
+            updateOverlays(getScrollProgress());
+            return;
+          }
+          computeTargetFrame();
+          startLoop();
+        }
+
+        function onResize() {
+          resizeCanvas();
+          computeTargetFrame();
+          if (reducedMotion) {
+            render();
+          } else {
+            startLoop();
+          }
+        }
+
+        function onBackToTopClick() {
+          window.scrollTo({
+            top: 0,
+            behavior: reducedMotion ? "auto" : "smooth",
+          });
+        }
+
+        function onReducedMotionChange(event) {
+          reducedMotion = event.matches;
+          if (reducedMotion) {
+            stopLoop();
+            targetFrame = 0;
+            currentFrame = 0;
+            render();
+          } else {
+            computeTargetFrame();
+            needsRender = true;
+            startLoop();
+          }
+        }
+
+        function cleanup() {
+          if (destroyed) return;
+          destroyed = true;
+          stopLoop();
+          window.removeEventListener("scroll", onScroll);
+          window.removeEventListener("resize", onResize);
+          window.removeEventListener("pagehide", cleanup);
+          window.removeEventListener("beforeunload", cleanup);
+          backToTopBtn.removeEventListener("click", onBackToTopClick);
+          if (typeof reducedMotionQuery.removeEventListener === "function") {
+            reducedMotionQuery.removeEventListener("change", onReducedMotionChange);
+          } else if (typeof reducedMotionQuery.removeListener === "function") {
+            reducedMotionQuery.removeListener(onReducedMotionChange);
+          }
+        }
+
+        Object.defineProperty(window, "__scrollVideoState", {
+          configurable: true,
+          get() {
+            const clamped = Math.min(FRAME_COUNT - 1, Math.max(0, currentFrame));
+            const progress = reducedMotion
+              ? getScrollProgress()
+              : FRAME_COUNT > 1
+                ? clamped / (FRAME_COUNT - 1)
+                : 0;
+            return {
+              frameCount: FRAME_COUNT,
+              loadedCount,
+              requestedCount,
+              failedCount,
+              currentFrame,
+              targetFrame,
+              progress,
+              activeStage,
+              reducedMotion,
+              canvasReady,
+              scrollY: window.scrollY,
+              scrollRange: document.documentElement.scrollHeight - window.innerHeight,
+              canvasWidth: viewportWidth,
+              canvasHeight: viewportHeight,
+            };
+          },
+        });
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("resize", onResize, { passive: true });
+        window.addEventListener("pagehide", cleanup);
+        window.addEventListener("beforeunload", cleanup);
+        backToTopBtn.addEventListener("click", onBackToTopClick);
+        if (typeof reducedMotionQuery.addEventListener === "function") {
+          reducedMotionQuery.addEventListener("change", onReducedMotionChange);
+        } else if (typeof reducedMotionQuery.addListener === "function") {
+          reducedMotionQuery.addListener(onReducedMotionChange);
+        }
+
+        resizeCanvas();
+        computeTargetFrame();
+        currentFrame = targetFrame;
+        render();
+        preloadSequence();
+
+        if (!reducedMotion) {
+          startLoop();
+        }
+      })();
+    </script>
+  </body>
+</html>
